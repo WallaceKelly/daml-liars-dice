@@ -1,0 +1,39 @@
+module Players where
+
+type PlayerId = ContractId Player
+
+template Player with
+    admin : Party
+    party : Party
+    public : Party
+    displayName : Text
+    coin : Int
+    committed : Int
+  where
+    signatory admin
+    observer party, public
+    key (admin, party) : (Party, Party)
+    maintainer key._1
+
+    choice Commit : PlayerId
+      with amt : Int
+      controller admin
+      do
+        assert (amt > 0)
+        assert (coin >= amt)
+        create this with
+          coin = coin - amt
+          committed = coin + amt
+    
+    choice Uncommit : PlayerId
+      controller admin
+      do
+        create this with
+          coin = coin + committed
+          committed = 0
+    
+    choice Payout : PlayerId
+      controller admin
+      do
+        create this with
+          committed = 0

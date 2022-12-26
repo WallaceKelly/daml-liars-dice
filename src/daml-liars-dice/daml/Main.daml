@@ -1,0 +1,42 @@
+module Main where
+
+import Daml.Script
+import Players
+import Invitation
+
+setup = script do
+    wallace <- allocatePartyWithHint "Wallace" $ PartyIdHint("Wallace")
+    daniel <- allocatePartyWithHint "Daniel" $ PartyIdHint("Daniel")
+    franklin <- allocatePartyWithHint "Franklin" $ PartyIdHint("Franklin")
+    public <- allocatePartyWithHint "Public" $ PartyIdHint("Public")
+    admin <- allocatePartyWithHint "UserAdmin" $ PartyIdHint("UserAdmin")
+
+    let coin = 100
+    let ante = 1
+    let committed = 0
+
+    submit admin do
+        createCmd Player with
+            party = wallace
+            displayName = "Wallace Kelly"
+            ..
+
+    submit admin do
+        createCmd Player with
+            party = daniel
+            displayName = "Daniel Kelly"
+            ..
+
+    submit admin do
+        createCmd Player with
+            party = franklin
+            displayName = "Franklin Kelly"
+            ..
+
+    submit wallace do
+        createCmd Invitation with
+            host = wallace
+            otherParties = []
+            ..
+
+    return ()

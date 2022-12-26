@@ -1,0 +1,53 @@
+module Invitation where
+
+import DA.Assert
+import DA.Foldable (forA_)
+import Players
+
+type InvitationId = ContractId Invitation
+
+template Invitation with
+    admin : Party
+    public : Party
+    host : Party
+    otherParties : [Party]
+    ante : Int
+  where
+    signatory host
+    observer public, otherParties
+
+    choice Join : InvitationId
+      with
+        newParty : Party
+      controller newParty
+      do
+        -- enforce
+        newParty =/= host
+        assert (newParty `notElem` otherParties) 
+        create this with otherParties = newParty :: otherParties
+
+    choice Ready : PlayersReadyId
+      controller host
+      do
+        create PlayersReady with
+          allParties = host :: otherParties
+          ..
+
+type PlayersReadyId = ContractId PlayersReady
+
+template PlayersReady with
+    admin : Party
+    -- public : Party
+    host : Party
+    allParties : [Party]
+    ante : Int
+  where
+    signatory host
+    observer admin
+
+    choice Start : ()
+      controller admin
+      do
+        forA_ allParties (\party -> do
+          exerciseByKey @Player (admin, party) Commit with amt = ante)
+        -- return ()
