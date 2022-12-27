@@ -3,6 +3,7 @@ module Invitation where
 import DA.Assert
 import DA.Foldable (forA_)
 import Players
+import GamePlay
 
 type InvitationId = ContractId Invitation
 
@@ -10,44 +11,44 @@ template Invitation with
     admin : Party
     public : Party
     host : Party
-    otherParties : [Party]
+    otherPlayers : [Party]
     ante : Int
   where
     signatory host
-    observer public, otherParties
+    observer public, otherPlayers
 
     choice Join : InvitationId
       with
-        newParty : Party
-      controller newParty
+        newPlayer : Party
+      controller newPlayer
       do
-        -- enforce
-        newParty =/= host
-        assert (newParty `notElem` otherParties) 
-        create this with otherParties = newParty :: otherParties
+        newPlayer =/= host
+        assert (newPlayer `notElem` otherPlayers) 
+        create this with otherPlayers = newPlayer :: otherPlayers
 
     choice Ready : PlayersReadyId
       controller host
       do
         create PlayersReady with
-          allParties = host :: otherParties
+          players = host :: otherPlayers
           ..
 
 type PlayersReadyId = ContractId PlayersReady
 
 template PlayersReady with
     admin : Party
-    -- public : Party
     host : Party
-    allParties : [Party]
+    players : [Party]
     ante : Int
   where
     signatory host
     observer admin
 
-    choice Start : ()
+    choice Start : GameStartedId
+      with dices : [[Int]]
       controller admin
       do
-        forA_ allParties (\party -> do
-          exerciseByKey @Player (admin, party) Commit with amt = ante)
-        -- return ()
+        length dices === length players
+        forA_ (zip players dices) (\(player, dice) -> do
+          exerciseByKey @Player (admin, player) StartPlaying with ..)
+        create GameStarted with players, ..

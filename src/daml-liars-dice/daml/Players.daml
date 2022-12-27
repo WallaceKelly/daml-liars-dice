@@ -4,18 +4,49 @@ type PlayerId = ContractId Player
 
 template Player with
     admin : Party
-    party : Party
     public : Party
+    player : Party
+    displayName : Text
+    coin : Int
+  where
+    signatory admin
+    observer public, player
+    key (admin, player) : (Party, Party)
+    maintainer key._1
+
+    choice StartPlaying : PlayingPlayerId
+      with
+        ante : Int
+        dice : [Int]
+      controller admin
+      do
+        assert (ante > 0)
+        assert (coin >= ante)
+        create PlayingPlayer with
+          coin = coin - ante
+          committed = ante
+          ..
+
+type PlayingPlayerId = ContractId PlayingPlayer
+
+template PlayingPlayer with
+    admin : Party
+    player : Party
     displayName : Text
     coin : Int
     committed : Int
+    dice : [Int]
   where
     signatory admin
-    observer party, public
-    key (admin, party) : (Party, Party)
+    observer player
+    key (admin, player) : (Party, Party)
     maintainer key._1
+    
+    ensure
+      length dice == 6
+      && all (\d -> d >= 1 && d <= 6) dice
 
-    choice Commit : PlayerId
+    choice Commit : PlayingPlayerId
       with amt : Int
       controller admin
       do
@@ -23,16 +54,16 @@ template Player with
         assert (coin >= amt)
         create this with
           coin = coin - amt
-          committed = coin + amt
+          committed = committed + amt
     
-    choice Uncommit : PlayerId
+    choice Uncommit : PlayingPlayerId
       controller admin
       do
         create this with
           coin = coin + committed
           committed = 0
     
-    choice Payout : PlayerId
+    choice Payout : PlayingPlayerId
       controller admin
       do
         create this with

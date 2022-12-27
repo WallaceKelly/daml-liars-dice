@@ -3,6 +3,7 @@ module Main where
 import Daml.Script
 import Players
 import Invitation
+import GamePlay
 
 setup = script do
     wallace <- allocatePartyWithHint "Wallace" $ PartyIdHint("Wallace")
@@ -17,26 +18,53 @@ setup = script do
 
     submit admin do
         createCmd Player with
-            party = wallace
+            player = wallace
             displayName = "Wallace Kelly"
             ..
 
     submit admin do
         createCmd Player with
-            party = daniel
+            player = daniel
             displayName = "Daniel Kelly"
             ..
 
     submit admin do
         createCmd Player with
-            party = franklin
+            player = franklin
             displayName = "Franklin Kelly"
             ..
 
-    submit wallace do
+    game <- submit wallace do
         createCmd Invitation with
             host = wallace
-            otherParties = []
+            otherPlayers = []
             ..
+    
+    game <- submitMulti [daniel] [public] do
+        exerciseCmd game Join with newPlayer = daniel
+
+    game <- submitMulti [franklin] [public] do
+        exerciseCmd game Join with newPlayer = franklin
+    
+    game <- submit wallace do
+        exerciseCmd game Ready
+
+    game <- submit admin do
+        exerciseCmd game Start with
+            dices = [ [2, 3, 4, 5, 6, 1],
+                      [1, 2, 3, 4, 5, 6],
+                      [3, 4, 5, 6, 1, 2] ]
+
+    game <- submit wallace do
+        exerciseCmd game FirstBid with
+            bid = (Bid with quantity = 1, face = 1)
+    
+    game <- submit franklin do
+        exerciseCmd game ChangeBid with
+            nextBid = (Bid with quantity = 2, face = 1)
+
+    game <- submit daniel do
+        exerciseCmd game ChangeBid with
+            nextBid = (Bid with quantity = 2, face = 2)
 
     return ()

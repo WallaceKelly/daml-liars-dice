@@ -1,0 +1,58 @@
+module GamePlay where
+
+import DA.List
+
+type GameStartedId = ContractId GameStarted
+
+data Bid = Bid with
+    quantity : Int
+    face : Int
+      deriving (Eq, Show)
+
+isLegalBid : Bid -> Bool
+isLegalBid bid =
+  bid.quantity >= 1 && bid.quantity <= 6
+  && bid.face >= 1 && bid.face <= 6
+
+isLegalNextBid : Bid -> Bid -> Bool
+isLegalNextBid prevBid nextBid = 
+  isLegalBid nextBid
+  && (
+    nextBid.quantity > prevBid.quantity
+    || (nextBid.quantity == prevBid.quantity
+      && nextBid.face > prevBid.face)
+  )
+
+template GameStarted with
+    admin : Party
+    players : [Party]
+  where
+    signatory admin
+    observer players
+    choice FirstBid : GamePlayId
+      with bid : Bid
+      controller head players
+      do
+        assert (isLegalBid bid)
+        create GamePlay with
+          players = (tail players) ++ [head players]
+          ..
+    
+type GamePlayId = ContractId GamePlay
+
+template GamePlay with
+    admin : Party
+    players : [Party]
+    bid : Bid
+  where
+    signatory last players
+    observer admin, players
+    choice ChangeBid : GamePlayId
+      with nextBid : Bid
+      controller head players
+      do
+        assert (isLegalNextBid bid nextBid)
+        create GamePlay with
+          players = (tail players) ++ [head players]
+          bid = nextBid
+          ..
